@@ -1,0 +1,5 @@
+= Soundbeat Docs
+
+Welcome to the Soundbeat documentation.
+
+
