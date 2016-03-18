@@ -3,6 +3,7 @@ package beater
 import (
 	"fmt"
 	"time"
+	"math"
 
 	"github.com/krig/go-sox"
 
@@ -88,26 +89,82 @@ func configDuration(cfg string, d time.Duration) (time.Duration, error) {
 }
 
 func (bt *Soundbeat) Run(b *beat.Beat) error {
-	logp.Info("soundbeat is running! Hit CTRL-C to stop it.")
+	logp.Info("soundbeat is starting...")
 
-	ticker := time.NewTicker(bt.period)
-	counter := 1
-	for {
-		select {
-		case <-bt.done:
-			return nil
-		case <-ticker.C:
+	// Open the input file (with default parameters)
+	in := sox.OpenRead(bt.name)
+	if in == nil {
+		logp.Err("Failed to open input file")
+	}
+	// Close the file before exiting
+	defer in.Release()
+
+	// This example program requires that the audio has precisely 2 channels:
+	if in.Signal().Channels() != 2 {
+		logp.Err("Input must be 2 channels")
+	}
+
+	// Total duration is: number of samples (Length()) / 2 (stereo file) / rate (Rate())
+	// Example: The Whispers:
+	// - Length: 26 123 340 samples
+	// - Stereo: yes
+	// - Rate: 44 100 Hz
+	// Duration is 26123340/2/44100=296.182s
+
+	duration := float64(in.Signal().Length()) / float64(in.Signal().Channels()) / in.Signal().Rate()
+	logp.Info(" - Duration %f s", duration)
+	logp.Info(" - Channels %d", in.Signal().Channels())
+	logp.Info(" - Rate %d Hz", int64(in.Signal().Rate()))
+
+	now := time.Now()
+
+	period := bt.period
+
+	// Convert block size (in seconds) to a number of samples:
+	block_size := int64(period.Seconds()*float64(in.Signal().Rate())*float64(in.Signal().Channels()) + 0.5)
+	// Make sure that this is at a `wide sample' boundary:
+	block_size -= block_size % int64(in.Signal().Channels())
+	// Allocate a block of memory to store the block of audio samples:
+	buf := make([]sox.Sample, block_size)
+
+	// Read and process blocks of audio for the selected duration or until EOF:
+	for blocks := 0; in.Read(buf, uint(block_size)) == block_size && float64(blocks)*period.Seconds() < duration; blocks++ {
+		left := 0.0
+		right := 0.0
+
+		// We increment time with a block_size (in seconds)
+		// But we first zoom accordingly to the zoom factor we set
+		modifed_period := float64(period.Nanoseconds()) * bt.zoom
+		now = now.Add(time.Duration(modifed_period))
+
+		for i := int64(0); i < block_size; i++ {
+			// convert the sample from SoX's internal format to a `float64' for
+			// processing in this application:
+			sample := sox.SampleToFloat64(buf[i])
+
+			// The samples for each channel are interleaved; in this example
+			// we allow only stereo audio, so the left channel audio can be found in
+			// even-numbered samples, and the right channel audio in odd-numbered
+			// samples:
+			if (i & 1) != 0 {
+				right = math.Max(right, math.Abs(sample))
+			} else {
+				left = math.Max(left, math.Abs(sample))
+			}
 		}
 
 		event := common.MapStr{
-			"@timestamp": common.Time(time.Now()),
+			"@timestamp": common.Time(now),
 			"type":       b.Name,
-			"counter":    counter,
+			"left":       left * 100.0,
+			"right":      right * 100.0,
 		}
+
 		b.Events.PublishEvent(event)
-		logp.Info("Event sent")
-		counter++
 	}
+
+	logp.Info("soundbeat ended analyzing file %s", bt.name)
+	return nil
 }
 
 func (bt *Soundbeat) Cleanup(b *beat.Beat) error {
