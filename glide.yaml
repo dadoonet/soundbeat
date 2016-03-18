@@ -7,3 +7,4 @@ import:
   - libbeat/cfgfile
   - libbeat/common
   - libbeat/logp
+- package: github.com/krig/go-sox

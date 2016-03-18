@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/krig/go-sox"
+
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/cfgfile"
 	"github.com/elastic/beats/libbeat/common"
@@ -42,6 +44,13 @@ func (bt *Soundbeat) Config(b *beat.Beat) error {
 }
 
 func (bt *Soundbeat) Setup(b *beat.Beat) error {
+	// All libSoX applications must start by initializing the SoX library
+	if !sox.Init() {
+		logp.Critical("Failed to initialize SoX")
+	}
+	// Make sure to call Quit before terminating
+	defer sox.Quit()
+
 	period, err := configDuration(bt.beatConfig.Soundbeat.Period, 10*time.Millisecond)
 	if err != nil {
 		return err
