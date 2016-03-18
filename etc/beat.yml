@@ -3,5 +3,9 @@
 ############################# Soundbeat ######################################
 
 soundbeat:
-  # Defines how often an event is sent to the output
-  period: 1s
+  # MP3 file to analyze
+  name: musics/TheWhispers-AndTheBeatGoesOn.mp3
+  # Defines the size of each sample
+  period: 100ms
+  # Zoom factor for a better Kibana rendering (default to 1.0)
+  zoom: 10.0

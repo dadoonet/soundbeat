@@ -8,5 +8,7 @@ type Config struct {
 }
 
 type SoundbeatConfig struct {
-	Period string `yaml:"period"`
+	Name   string  `yaml:"name"`
+	Period string  `yaml:"period"`
+	Zoom   float64 `yaml:"zoom"`
 }

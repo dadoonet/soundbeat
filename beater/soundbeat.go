@@ -15,7 +15,10 @@ import (
 type Soundbeat struct {
 	beatConfig *config.Config
 	done       chan struct{}
-	period     time.Duration
+
+	name   string
+	period time.Duration
+	zoom   float64
 }
 
 // Creates beater
@@ -39,19 +42,40 @@ func (bt *Soundbeat) Config(b *beat.Beat) error {
 }
 
 func (bt *Soundbeat) Setup(b *beat.Beat) error {
-
-	// Setting default period if not set
-	if bt.beatConfig.Soundbeat.Period == "" {
-		bt.beatConfig.Soundbeat.Period = "1s"
-	}
-
-	var err error
-	bt.period, err = time.ParseDuration(bt.beatConfig.Soundbeat.Period)
+	period, err := configDuration(bt.beatConfig.Soundbeat.Period, 10*time.Millisecond)
 	if err != nil {
 		return err
 	}
 
+	name := bt.beatConfig.Soundbeat.Name
+	if name == "" {
+		logp.Critical("no name set")
+		return nil
+	}
+
+	zoom := 1.0
+	if bt.beatConfig.Soundbeat.Zoom != 0.0 {
+		zoom = bt.beatConfig.Soundbeat.Zoom
+	}
+
+	bt.name = name
+	bt.period = period
+	bt.zoom = zoom
+
+	logp.Info("soundbeat has been configured:")
+	logp.Info(" - Name: %s", bt.name)
+	logp.Info(" - Period: %s", bt.period.String())
+	logp.Info(" - Zoom: %f", bt.zoom)
+
 	return nil
+}
+
+func configDuration(cfg string, d time.Duration) (time.Duration, error) {
+	if cfg != "" {
+		return time.ParseDuration(cfg)
+	} else {
+		return d, nil
+	}
 }
 
 func (bt *Soundbeat) Run(b *beat.Beat) error {
