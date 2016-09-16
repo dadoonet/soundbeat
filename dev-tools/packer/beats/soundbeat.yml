@@ -1,4 +1,0 @@
-beat_name: soundbeat
-beat_url: 'https://github.com/dadoonet'
-beat_repo: 'github.com/dadoonet'
-beat_description: Sends soundbeat metrics to Logstash or directly to Elasticsearch.

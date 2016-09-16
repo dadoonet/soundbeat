@@ -3,12 +3,13 @@
 
 package config
 
+import "time"
+
 type Config struct {
-	Soundbeat SoundbeatConfig
+	Period time.Duration `config:"period"`
+  Name string `config:"name"`
 }
 
-type SoundbeatConfig struct {
-	Name   string  `yaml:"name"`
-	Period string  `yaml:"period"`
-	Zoom   float64 `yaml:"zoom"`
+var DefaultConfig = Config{
+	Period: 1 * time.Second,
 }

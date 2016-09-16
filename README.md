@@ -7,18 +7,23 @@ Ensure that this folder is at the following location:
 
 ## Getting Started with Soundbeat
 
+### Requirements
+
+* [Golang](https://golang.org/dl/) 1.7
+
 ### Init Project
-To get running with Soundbeat, run the following commands:
+To get running with Soundbeat and also install the
+dependencies, run the following command:
 
 ```
-make init
+make setup
 ```
 
+It will create a clean git history for each major step. Note that you can always rewrite the history if you wish before pushing your changes.
 
 To push Soundbeat in the git repository, run the following commands:
 
 ```
-git commit 
 git remote set-url origin https://github.com/dadoonet/soundbeat
 git push origin master
 ```
@@ -46,7 +51,7 @@ To run Soundbeat with debugging output enabled, run:
 
 ### Test
 
-To test Soundbeat, run the following commands:
+To test Soundbeat, run the following command:
 
 ```
 make testsuite
@@ -61,18 +66,6 @@ make coverage-report
 ```
 
 The test coverage is reported in the folder `./build/coverage/`
-
-
-### Package
-
-To cross-compile and package Soundbeat for all supported platforms, run the following commands:
-
-```
-cd dev-tools/packer
-make deps
-make images
-make
-```
 
 ### Update
 
@@ -113,3 +106,14 @@ git clone https://github.com/dadoonet/soundbeat
 
 
 For further development, check out the [beat developer guide](https://www.elastic.co/guide/en/beats/libbeat/current/new-beat.html).
+
+
+## Packaging
+
+The beat frameworks provides tools to crosscompile and package your beat for different platforms. This requires [docker](https://www.docker.com/) and vendoring as described above. To build packages of your beat, run the following command:
+
+```
+make package
+```
+
+This will fetch and create all images required for the build process. The hole process to finish can take several minutes.

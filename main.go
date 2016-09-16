@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	err := beat.Run("soundbeat", "", beater.New())
+	err := beat.Run("soundbeat", "", beater.New)
 	if err != nil {
 		os.Exit(1)
 	}
