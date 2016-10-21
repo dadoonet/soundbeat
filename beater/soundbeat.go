@@ -3,7 +3,6 @@ package beater
 import (
 	"fmt"
 	"time"
-
 	"math"
 
 	"github.com/krig/go-sox"
@@ -20,7 +19,6 @@ type Soundbeat struct {
 	done   chan struct{}
 	config config.Config
 	client publisher.Client
-  name   string
 }
 
 // Creates beater
@@ -30,22 +28,19 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 		return nil, fmt.Errorf("Error reading config file: %v", err)
 	}
 
-	bt := &Soundbeat{
-		done: make(chan struct{}),
-		config: config,
-	}
+  if config.Name == "" {
+		return nil, fmt.Errorf("no name set")
+  }
 
 	if !sox.Init() {
 		return nil, fmt.Errorf("Failed to initialize SoX")
 	}
 	defer sox.Quit()
 
-  name := config.Name
-  if name == "" {
-		return nil, fmt.Errorf("no name set")
-  }
-  bt.name = name
-
+	bt := &Soundbeat{
+		done: make(chan struct{}),
+		config: config,
+	}
 	return bt, nil
 }
 
@@ -54,7 +49,7 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
 
 	bt.client = b.Publisher.Connect()
 
-	in := sox.OpenRead(bt.name)
+	in := sox.OpenRead(bt.config.Name)
 	if in == nil {
 	  logp.Err("Failed to open input file")
 	}
@@ -62,7 +57,6 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
 	defer in.Release()
 
 	duration := float64(in.Signal().Length()) / float64(in.Signal().Channels()) / in.Signal().Rate()
-
 	now := time.Now()
 
   // number of samples:
@@ -73,6 +67,7 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
   buf := make([]sox.Sample, block_size)
 
 	for blocks := 0; in.Read(buf, uint(block_size)) == block_size && float64(blocks) * bt.config.Period.Seconds() < duration; blocks++ {
+  
     left := 0.0
     right := 0.0
 
@@ -89,16 +84,16 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
     }
 
 		event := common.MapStr{
-      "@timestamp":   common.Time(now),
-      "type":         b.Name,
-      "left":         left * 100.0,
-      "right":        right * 100.0,
+			"@timestamp": common.Time(time.Now()),
+			"type":       b.Name,
+			"left":       left * 100.0,
+			"right":      right * 100.0,
 		}
 		bt.client.PublishEvent(event)
 		logp.Info("Event sent")
- 	}
+	}
 
- 	logp.Info("soundbeat ended analyzing file %s", bt.name)
+  logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
   return nil
 }
 
