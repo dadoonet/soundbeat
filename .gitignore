@@ -6,3 +6,6 @@
 /soundbeat
 /soundbeat.test
 *.pyc
+
+logs/
+musics/
