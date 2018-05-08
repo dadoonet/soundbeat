@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/beats/libbeat/beat"
 	"github.com/elastic/beats/libbeat/common"
 	"github.com/elastic/beats/libbeat/logp"
-	"github.com/elastic/beats/libbeat/publisher"
 
 	"github.com/dadoonet/soundbeat/config"
 )
@@ -18,17 +17,17 @@ import (
 type Soundbeat struct {
 	done   chan struct{}
 	config config.Config
-	client publisher.Client
+	client beat.Client
 }
 
 // Creates beater
 func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
-	config := config.DefaultConfig
-	if err := cfg.Unpack(&config); err != nil {
+	c := config.DefaultConfig
+	if err := cfg.Unpack(&c); err != nil {
 		return nil, fmt.Errorf("Error reading config file: %v", err)
 	}
 
-  if config.Name == "" {
+  if c.Name == "" {
 		return nil, fmt.Errorf("no name set")
   }
 
@@ -38,8 +37,8 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	defer sox.Quit()
 
 	bt := &Soundbeat{
-		done: make(chan struct{}),
-		config: config,
+		done:   make(chan struct{}),
+		config: c,
 	}
 	return bt, nil
 }
@@ -47,7 +46,11 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 func (bt *Soundbeat) Run(b *beat.Beat) error {
 	logp.Info("soundbeat is running! Hit CTRL-C to stop it.")
 
-	bt.client = b.Publisher.Connect()
+	var err error
+	bt.client, err = b.Publisher.Connect()
+	if err != nil {
+		return err
+	}
 
 	in := sox.OpenRead(bt.config.Name)
 	if in == nil {
@@ -83,18 +86,20 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
       }
     }
 
-		event := common.MapStr{
-			"@timestamp": common.Time(time.Now()),
-			"type":       b.Name,
-			"left":       left * 100.0,
-			"right":      right * 100.0,
+		event := beat.Event{
+			Timestamp: time.Now(),
+			Fields: common.MapStr{
+				"type":       bt.config.Name,
+				"left":       left * 100.0,
+				"right":      right * 100.0,
+			},
 		}
-		bt.client.PublishEvent(event)
+		bt.client.Publish(event)
 		logp.Info("Event sent")
 	}
 
-  logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
-  return nil
+	logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
+	return nil
 }
 
 func (bt *Soundbeat) Stop() {

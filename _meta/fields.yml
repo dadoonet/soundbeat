@@ -1,0 +1,14 @@
+- key: soundbeat
+  title: soundbeat
+  description:
+  fields:
+    - name: name
+      type: text
+      required: true
+      description: >
+        MP3 file to analyze
+    - name: period
+      type: long
+      required: false
+      description: >
+        Defines the size of each sample

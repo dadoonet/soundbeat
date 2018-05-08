@@ -1,5 +1,6 @@
 /.idea
 /vendor
+/venv
 /build
 
 .DS_Store
@@ -7,5 +8,5 @@
 /soundbeat.test
 *.pyc
 
-logs/
-musics/
+/logs
+/musics
