@@ -44,7 +44,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 }
 
 func (bt *Soundbeat) Run(b *beat.Beat) error {
-	logp.Info("soundbeat is running! Hit CTRL-C to stop it.")
+	logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
 
 	var err error
 	bt.client, err = b.Publisher.Connect()
@@ -61,6 +61,12 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
 
 	duration := float64(in.Signal().Length()) / float64(in.Signal().Channels()) / in.Signal().Rate()
 	now := time.Now()
+
+	// Rewind time so Kibana won't have to look at data in the future
+	now = now.Add(-(time.Duration(duration)*time.Second))
+
+	logp.Info("Duration of the track %s", time.Duration(duration)*time.Second)
+	logp.Info("Changed starting timestamp to %s", now)
 
   // number of samples:
   block_size := int64(bt.config.Period.Seconds() * float64(in.Signal().Rate()) * float64(in.Signal().Channels()) + 0.5)
@@ -87,7 +93,7 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
     }
 
 		event := beat.Event{
-			Timestamp: time.Now(),
+			Timestamp: now,
 			Fields: common.MapStr{
 				"type":       bt.config.Name,
 				"left":       left * 100.0,
@@ -95,7 +101,7 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
 			},
 		}
 		bt.client.Publish(event)
-		logp.Info("Event sent")
+		logp.Debug("Event sent", "")
 	}
 
 	logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
