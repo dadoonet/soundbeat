@@ -2,6 +2,7 @@
 /vendor
 /venv
 /build
+/data
 
 .DS_Store
 /soundbeat
