@@ -14,13 +14,14 @@ import (
 	"github.com/dadoonet/soundbeat/config"
 )
 
+// Soundbeat configuration
 type Soundbeat struct {
 	done   chan struct{}
 	config config.Config
 	client beat.Client
 }
 
-// Creates beater
+// New Creates beater
 func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	c := config.DefaultConfig
 	if err := cfg.Unpack(&c); err != nil {
@@ -43,6 +44,7 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 	return bt, nil
 }
 
+// Run runs the beat
 func (bt *Soundbeat) Run(b *beat.Beat) error {
 	logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
 
@@ -129,6 +131,7 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
 	return nil
 }
 
+// Stop is called when we stop the beat
 func (bt *Soundbeat) Stop() {
 	bt.client.Close()
 	close(bt.done)
