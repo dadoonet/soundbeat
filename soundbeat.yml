@@ -5,8 +5,8 @@
 soundbeat:
   # MP3 file to analyze
   name: musics/TheWhispers-AndTheBeatGoesOn.mp3
-  # Defines the size of each sample
-  period: 100ms
+  # Defines the size of each sample (default to 1ms)
+  # period: 1ms
 
 #================================ General =====================================
 

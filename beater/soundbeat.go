@@ -2,8 +2,8 @@ package beater
 
 import (
 	"fmt"
-	"time"
 	"math"
+	"time"
 
 	"github.com/krig/go-sox"
 
@@ -27,9 +27,9 @@ func New(b *beat.Beat, cfg *common.Config) (beat.Beater, error) {
 		return nil, fmt.Errorf("Error reading config file: %v", err)
 	}
 
-  if c.Name == "" {
+	if c.Name == "" {
 		return nil, fmt.Errorf("no name set")
-  }
+	}
 
 	if !sox.Init() {
 		return nil, fmt.Errorf("Failed to initialize SoX")
@@ -54,55 +54,76 @@ func (bt *Soundbeat) Run(b *beat.Beat) error {
 
 	in := sox.OpenRead(bt.config.Name)
 	if in == nil {
-	  logp.Err("Failed to open input file")
+		logp.Err("Failed to open input file")
 	}
 	// Close the file before exiting
 	defer in.Release()
 
-	duration := float64(in.Signal().Length()) / float64(in.Signal().Channels()) / in.Signal().Rate()
+	// This duration is in milliseconds
+	duration := float64(in.Signal().Length()) / float64(in.Signal().Channels()) / in.Signal().Rate() * 1000
+	start := time.Now()
 	now := time.Now()
+	firstTick := now
+	lastTick := now
+	sampleNum := 0
 
-	// Rewind time so Kibana won't have to look at data in the future
-	now = now.Add(-(time.Duration(duration)*time.Second))
+	logp.Info("Duration of the track %s", time.Duration(duration)*time.Millisecond)
+	logp.Info("Size of the track %s", in.Signal().Length())
+	// logp.Info("Changed starting timestamp to %s", now)
+	logp.Info("Period is %s", bt.config.Period)
+	// number of samples to read per period (including stereo or mono)
+	blockSize := int64(bt.config.Period.Seconds()*float64(in.Signal().Rate())*float64(in.Signal().Channels()) + 0.5)
+	logp.Info("number of samples: %s", blockSize)
+	// Adjust boundary:
+	blockSize -= blockSize % int64(in.Signal().Channels())
+	logp.Info("number of samples after adjustment: %s", blockSize)
 
-	logp.Info("Duration of the track %s", time.Duration(duration)*time.Second)
-	logp.Info("Changed starting timestamp to %s", now)
+	// Allocate memory for each sample
+	buf := make([]sox.Sample, blockSize)
 
-  // number of samples:
-  block_size := int64(bt.config.Period.Seconds() * float64(in.Signal().Rate()) * float64(in.Signal().Channels()) + 0.5)
-  // Adjust boundary:
-  block_size -= block_size % int64(in.Signal().Channels())
-  // Allocate memory:
-  buf := make([]sox.Sample, block_size)
+	left := 0.0
+	right := 0.0
 
-	for blocks := 0; in.Read(buf, uint(block_size)) == block_size && float64(blocks) * bt.config.Period.Seconds() < duration; blocks++ {
-  
-    left := 0.0
-    right := 0.0
+	logp.Info("Start music at %s with left = %s and right = %s", now, left, right)
 
-    now = now.Add(bt.config.Period)
+	for blocks := 0; in.Read(buf, uint(blockSize)) == blockSize && float64(blocks)*bt.config.Period.Seconds() < duration; blocks++ {
 
-    for i := int64(0); i < block_size; i++ {
-      sample := sox.SampleToFloat64(buf[i])
+		left = 0
+		right = 0
 
-      if (i & 1) != 0 {
-        right = math.Max(right, math.Abs(sample))
-      } else {
-        left = math.Max(left, math.Abs(sample))
-      }
-    }
+		for i := int64(0); i < blockSize; i++ {
+			sample := sox.SampleToFloat64(buf[i])
 
+			if (i & 1) != 0 {
+				right = math.Max(right, math.Abs(sample))
+			} else {
+				left = math.Max(left, math.Abs(sample))
+			}
+		}
+
+		sampleNum++
 		event := beat.Event{
 			Timestamp: now,
 			Fields: common.MapStr{
-				"type":       bt.config.Name,
-				"left":       left * 100.0,
-				"right":      right * 100.0,
+				"type":   bt.config.Name,
+				"sample": sampleNum,
+				"left":   left * 100.0,
+				"right":  right * 100.0,
 			},
 		}
 		bt.client.Publish(event)
-		logp.Debug("Event sent", "")
+		logp.Debug("Sample %s sent", string(sampleNum))
+		now = now.Add(bt.config.Period)
+		lastTick = now
 	}
+
+	logp.Info("Stop music at %s with left = %s and right = %s", now, left, right)
+	logp.Info("Music duration that we analyzed = %s", lastTick.Sub(firstTick))
+	logp.Info("Number of samples generated = %s", sampleNum)
+
+	end := time.Now()
+
+	logp.Info("Took %s to analyze the music", end.Sub(start))
 
 	logp.Info("soundbeat ended analyzing file %s", bt.config.Name)
 	return nil
