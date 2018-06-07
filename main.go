@@ -3,14 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/elastic/beats/libbeat/beat"
-
-	"github.com/dadoonet/soundbeat/beater"
+	"github.com/dadoonet/soundbeat/cmd"
 )
 
 func main() {
-	err := beat.Run("soundbeat", "", beater.New)
-	if err != nil {
+	if err := cmd.RootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
 }

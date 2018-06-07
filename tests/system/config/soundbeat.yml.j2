@@ -19,7 +19,7 @@ output:
 
     # Name of the generated files. The default is `soundbeat` and it generates
     # files: `soundbeat`, `soundbeat.1`, `soundbeat.2`, etc.
-    filename: "{{ output_file_filename|default("soundbeat") }}"
+    filename: {{ output_file_filename|default("soundbeat") }}
 
     # Maximum size in kilobytes of each file. When this size is reached, the files are
     # rotated. The default value is 10 MB.

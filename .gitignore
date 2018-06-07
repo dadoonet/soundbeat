@@ -1,11 +1,15 @@
 /.idea
 /vendor
+/venv
 /build
+/data
 
 .DS_Store
 /soundbeat
 /soundbeat.test
 *.pyc
 
-logs/
-musics/
+/logs
+/musics
+
+/_meta/fields.generated.yml
